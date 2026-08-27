@@ -1,7 +1,7 @@
 CC = riscv64-linux-gnu-gcc
 LD = riscv64-linux-gnu-ld
 OBJCOPY = riscv64-linux-gnu-objcopy
-CFLAGS = -march=rv64g -mabi=lp64 -ffreestanding -nostdlib
+CFLAGS = -march=rv64g -mabi=lp64 -ffreestanding -nostdlib -mcmodel=medany -g
 LDFLAGS = -T linker.ld
 OBJS :=boot.o main.o
 kernel.elf: $(OBJS)

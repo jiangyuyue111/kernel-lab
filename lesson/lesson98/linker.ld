@@ -18,4 +18,7 @@
         *(.bss)
     }
     ebss = .;
+    . = ALIGN(16);
+    . += 0x1000;
+    stack_top = .;
  }
