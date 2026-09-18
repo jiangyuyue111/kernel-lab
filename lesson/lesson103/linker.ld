@@ -21,4 +21,6 @@
     . = ALIGN(16);
     . += 0x1000;
     stack_top = .;
+    . = ALIGN(4096);
+    kernel_end = .;
  }

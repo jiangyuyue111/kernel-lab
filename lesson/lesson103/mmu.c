@@ -1,6 +1,6 @@
 #include "mmu.h"
 
-
+extern char kernel_end[];
 // ============================================================
 // 1. Sv39 基础参数
 // ============================================================
@@ -60,6 +60,15 @@ static unsigned long level1_table[PT_ENTRIES]
 // 第三层页表
 // 使用 VPN0 作为索引
 static unsigned long level0_table[PT_ENTRIES]
+    __attribute__((aligned(PAGE_SIZE)));
+
+
+// UART 使用的第1级页表
+static unsigned long uart_level1_table[PT_ENTRIES]
+    __attribute__((aligned(PAGE_SIZE)));
+
+// UART 使用的第0级页表
+static unsigned long uart_level0_table[PT_ENTRIES]
     __attribute__((aligned(PAGE_SIZE)));
 
 
@@ -170,10 +179,21 @@ static void map_page(
     unsigned long vpn2 = get_vpn2(va);
     unsigned long vpn1 = get_vpn1(va);
     unsigned long vpn0 = get_vpn0(va);
-    root_page_table[vpn2] = 
-    make_table_pte((unsigned long)level1_table);
-    level1_table[vpn1] =
-    make_table_pte((unsigned long)level0_table);
+
+
+    if(root_page_table[vpn2] == 0)
+    {
+        root_page_table[vpn2] =
+        make_table_pte((unsigned long)level1_table);
+    }
+    if(level1_table[vpn1]== 0)
+    {
+        level1_table[vpn1] =
+        make_table_pte((unsigned long)level0_table);
+    }
+
+
+
     level0_table[vpn0] =
     make_leaf_pte(pa,flags);
 }
@@ -182,6 +202,46 @@ static void map_page(
 // ============================================================
 // 6. 初始化三级页表
 // ============================================================
+
+
+static unsigned long make_satp_value(void)
+{
+    // 1. 取得根页表的物理地址
+    unsigned long root_addr =
+        (unsigned long)root_page_table;
+
+    // 2. 物理地址 >> 12，得到根页表 PPN
+    unsigned long root_ppn =
+        root_addr >> 12;
+
+    // 3. Sv39 MODE = 8
+    unsigned long mode =
+        8UL << 60;
+
+    // 4. MODE + 根页表PPN
+    return mode | root_ppn;
+}
+
+ static void enable_mmu(unsigned long satp_value)
+{
+    // 把我们准备好的值写进 satp CSR
+    asm volatile(
+        "csrw satp, %0"
+        :
+        : "r"(satp_value)
+        : "memory"
+    );
+
+    // 刷新地址转换相关缓存
+    asm volatile(
+        "sfence.vma"
+        :
+        :
+        : "memory"
+    );
+}
+
+
 
 void mmu_init(void)
 {
@@ -204,17 +264,52 @@ void mmu_init(void)
         root_page_table[i] = 0;
         level1_table[i] = 0;
         level0_table[i] = 0;
+        uart_level1_table[i] = 0;
+        uart_level0_table[i] = 0;
     }
+    unsigned long addr;
+
+// 连续映射 3 个 4KB 页面
+    for (addr = 0x80000000UL;
+    addr < (unsigned long)kernel_end;
+    addr += PAGE_SIZE)
+{
     map_page(
-        0x80000000UL,
-        0x80000000UL,
+        addr,
+        addr,
         PTE_R | PTE_W | PTE_X
     );
-    map_page(
-        0x80001000UL,
-        0X80001000UL,
-        PTE_R | PTE_W |PTE_X
+}
+
+// UART: VA 0x10000000 → PA 0x10000000
+
+// VPN2 = 0
+// root[0] 告诉 MMU：UART 的第1级页表在哪里
+root_page_table[0] =
+    make_table_pte(
+        (unsigned long)uart_level1_table
     );
+
+// VPN1 = 128
+// uart_level1[128] 告诉 MMU：UART 的第0级页表在哪里
+uart_level1_table[128] =
+    make_table_pte(
+        (unsigned long)uart_level0_table
+    );
+
+// VPN0 = 0
+// 最后一层直接指向 UART 的物理地址
+uart_level0_table[0] =
+    make_leaf_pte(
+        0x10000000UL,
+        PTE_R | PTE_W
+    );
+   // 计算 satp 应该写入的值
+unsigned long satp_value =
+    make_satp_value();
+
+// 把这个值真正写入 CPU 的 satp 寄存器
+enable_mmu(satp_value);
 }
 
    
