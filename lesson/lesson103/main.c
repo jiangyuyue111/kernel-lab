@@ -13,6 +13,8 @@ extern void trap_entry(void);    //extern的意思是这个函数不在本文件
 #include "mmu.h"
 #include "page.h"
 
+void *debug_page1 = 0;
+void *debug_page2 = 0;
 static void s_mode_test(void)
 {
   //如果进入S-MODE后还能执行这句话，说明内核代码的页表能够工作
@@ -109,6 +111,9 @@ int main()
 
     mmu_init();
     page_init();
+    //申请两个4kb的物理也，返回的地址保存到debug_page里面
+    debug_page1 = alloc_page();
+    debug_page2 = alloc_page();
 
   enter_s_mode(s_mode_test);
 
