@@ -3,7 +3,7 @@ LD = riscv64-linux-gnu-ld
 OBJCOPY = riscv64-linux-gnu-objcopy
 CFLAGS = -march=rv64g -mabi=lp64 -ffreestanding -nostdlib -mcmodel=medany -fno-pie -fno-pic -g
 LDFLAGS = -T linker.ld
-OBJS :=boot.o trap_entry.o main.o uart.o plic.o trap.o console.o string.o shell.o mmu.o
+OBJS :=boot.o trap_entry.o main.o uart.o plic.o trap.o console.o string.o shell.o mmu.o page.o
 kernel.elf : $(OBJS) 
 	$(LD) $(LDFLAGS) -o $@ $(OBJS)
 kernel.bin : kernel.elf

@@ -13,10 +13,17 @@
     .data : {
         *(.data)
     }
+
+    . =ALIGN(8);
     sbss = .;
     .bss : {
+        *(.sbss)
+        *(.sbss.*)
         *(.bss)
-    }
+        *(.bss.*)
+        *(COMMON)
+        . = ALIGN(8);
+        }
     ebss = .;
     . = ALIGN(16);
     . += 0x1000;

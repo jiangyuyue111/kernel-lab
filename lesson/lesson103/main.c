@@ -11,6 +11,7 @@ extern void trap_entry(void);    //extern的意思是这个函数不在本文件
 #include "console.h"
 #include "string.h"
 #include "mmu.h"
+#include "page.h"
 
 static void s_mode_test(void)
 {
@@ -34,9 +35,7 @@ static void s_mode_test(void)
     unsigned long pmpcfg =
         0xFUL;
 
-    /*
-     * 把 pmpaddr 写入 pmpaddr0
-     */
+    
     asm volatile(
         "csrw pmpaddr0, %0"
         :
@@ -44,9 +43,7 @@ static void s_mode_test(void)
         : "memory"
     );
 
-    /*
-     * 配置 pmpcfg0
-     */
+    
     asm volatile(
         "csrw pmpcfg0, %0"
         :
@@ -111,6 +108,7 @@ int main()
     uart_puts("minios" );
 
     mmu_init();
+    page_init();
 
   enter_s_mode(s_mode_test);
 
