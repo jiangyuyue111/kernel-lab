@@ -15,6 +15,8 @@ extern void trap_entry(void);    //extern的意思是这个函数不在本文件
 
 void *debug_page1 = 0;
 void *debug_page2 = 0;
+void *debug_page3 = 0;
+int debug_free_result = -99;
 static void s_mode_test(void)
 {
   //如果进入S-MODE后还能执行这句话，说明内核代码的页表能够工作
@@ -114,6 +116,13 @@ int main()
     //申请两个4kb的物理也，返回的地址保存到debug_page里面
     debug_page1 = alloc_page();
     debug_page2 = alloc_page();
+//归还第一次申请到的第0页
+    debug_free_result = free_page(debug_page1);
+    //清空指针，避免误用
+    debug_page1 = 0;
+    //如果释放成功，应该重新得到第0页
+    debug_page3 = alloc_page();
+
 
   enter_s_mode(s_mode_test);
 

@@ -28,3 +28,41 @@ void *alloc_page(void)
     }
     return (void *)0;
 }
+int free_page(void *page)
+//返回：0：成功；-1：地址不合法；-2：重复释放
+{
+    //取得物理页池第0页起始地址
+    unsigned long start =
+    (unsigned long)&page_pool[0][0];
+    //取得整个物理页池的结束边界
+    unsigned long end =
+    start + PAGE_COUNT + PAGE_SIZE;
+    //把调用者传入的地址转换成整数
+    unsigned long addr =
+    (unsigned long)page;
+    //检查地址是否属于我们的页池
+    if (addr < start || addr >= end)
+    {
+        return -1;
+    }
+    //算出传入地址距离物理页池多远
+    unsigned long offset = 
+        addr - start;
+    // 检查地址是不是一个物理页的起始地址。
+    // 如果不能被4096整除，就不是合法的页起点。    
+    if (offset % PAGE_SIZE != 0)
+    {
+        return -1;
+    }
+    //根据地址差值，计算它是第几个物理页。
+     unsigned long i =
+        offset / PAGE_SIZE;
+    // 8. 检查这个物理页是不是已经空闲。
+    if (page_used[i] == 0)
+    {
+        return -2;
+    }
+    // 9. 把当前物理页重新标记为空闲
+    page_used[i] = 0;
+    return 0;
+}
