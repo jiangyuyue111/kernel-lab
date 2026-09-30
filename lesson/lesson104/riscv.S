@@ -1,0 +1,131 @@
+    #告诉汇编器不要按照PIC的某些方式处理，因为裸机没有linux对应的加载etf功能
+    .option nopic   #等价于Makefile里的-mcmodel=medany
+    .section .text    #告诉汇编机器：下面内容放入.tex代码段
+    .global _start    #把_start声明为全局符号，连接器可以找到它
+_start:
+    #初始化栈指针
+    #stack_top由linker.ld定义
+    # la = load address,把stack_lop的地址装入sp
+    la sp, stack_top
+    #准备清空BSS
+    #a0保存BSS起始地址
+    #a1保存BSS结束地址
+    la a0, sbss
+    la a1, ebss
+
+bss_loop:
+    #如果 a0 >=a1,说明已经清到BSS末尾
+    #跳转到bss_done
+    bgeu a0, a1, bss_done
+    #把zero寄存器中的0写入a0指向的内存
+    #sd = store doubleworld,一次性写入8个字节
+    sd zero, 0(a0)
+    #向后移8个字节
+    #准备清理下一块内存
+    addi a0, a0, 8
+    #回到循环开头
+    j bss_loop
+
+bss_done:
+    #BSS清零完成
+    #调用C语言的main（）
+    #jal会同时把返回地址保存到ra
+    jal ra, main
+halt:
+    #如果main函数返回，就永远停在这里
+    j halt
+.section .text
+.align 2    #让trap_entry放在满足指令地址对齐要求的位置
+.global trap_entry
+
+trap_entry:
+#在栈上创建256字节trao frame
+    addi sp, sp, -256
+    #保存通用寄存器，ra= return aaddress
+    sd ra, 0(sp)
+    sd gp, 8(sp)
+    sd tp, 16(sp)
+
+
+    #临时寄存器
+    sd t0, 24(sp)
+    sd t1, 32(sp)
+    sd t2, 40(sp)
+    #saved regisers
+    sd s0, 48(sp)
+    sd s1, 56(sp)
+
+
+    #函数参数/返回值寄存器
+    sd a0, 64(sp)
+    sd a1, 72(sp)
+    sd a2, 80(sp)
+    sd a3, 88(sp)
+    sd a4, 96(sp)
+    sd a5, 104(sp)
+    sd a6, 112(sp)
+    sd a7, 120(sp)
+
+
+    # saved registers
+    sd s2, 128(sp)
+    sd s3, 136(sp)
+    sd s4, 144(sp)
+    sd s5, 152(sp)
+    sd s6, 160(sp)
+    sd s7, 168(sp)
+    sd s8, 176(sp)
+    sd s9, 184(sp)
+    sd s10, 192(sp)
+    sd s11, 200(sp)
+
+
+    # 临时寄存器
+    sd t3, 208(sp)
+    sd t4, 216(sp)
+    sd t5, 224(sp)
+    sd t6, 232(sp)
+
+    #调用c的trap handler
+    call trap_handler
+    #恢复现场
+     ld ra,   0(sp)
+    ld gp,   8(sp)
+    ld tp,  16(sp)
+
+    ld t0,  24(sp)
+    ld t1,  32(sp)
+    ld t2,  40(sp)
+
+    ld s0,  48(sp)
+    ld s1,  56(sp)
+
+    ld a0,  64(sp)
+    ld a1,  72(sp)
+    ld a2,  80(sp)
+    ld a3,  88(sp)
+    ld a4,  96(sp)
+    ld a5, 104(sp)
+    ld a6, 112(sp)
+    ld a7, 120(sp)
+
+    ld s2, 128(sp)
+    ld s3, 136(sp)
+    ld s4, 144(sp)
+    ld s5, 152(sp)
+    ld s6, 160(sp)
+    ld s7, 168(sp)
+    ld s8, 176(sp)
+    ld s9, 184(sp)
+    ld s10,192(sp)
+    ld s11,200(sp)
+
+    ld t3, 208(sp)
+    ld t4, 216(sp)
+    ld t5, 224(sp)
+    ld t6, 232(sp)
+
+    #删除trao frame，恢复到原来的sp
+    addi sp, sp, 256
+    #从machine trap 返回值寄存器
+    mret
