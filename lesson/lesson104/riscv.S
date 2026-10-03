@@ -27,13 +27,28 @@ bss_loop:
     j bss_loop
 
 bss_done:
-    #BSS清零完成
-    #调用C语言的main（）
-    #jal会同时把返回地址保存到ra
-    jal ra, main
-halt:
+   call main
+.global boot_enter_s
+boot_enter_s:
+li t0, -1
+srli t0, t0, 10
+csrw pmpaddr0, t0
+li t0, 0x0f
+csrw pmpcfg0, t0
+la t0, kernel_main
+csrw mepc, t0
+csrr t0, mstatus
+li t1, 0x1800
+not t1, t1
+and t0, t0, t1
+li t1, 0x800
+or t0, t0, t1
+csrw mstatus, t0
+mret
+
+boot_halt:
     #如果main函数返回，就永远停在这里
-    j halt
+    j boot_halt
 .section .text
 .align 2    #让trap_entry放在满足指令地址对齐要求的位置
 .global trap_entry

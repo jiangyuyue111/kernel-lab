@@ -16,66 +16,7 @@ extern void trap_entry(void);    //extern的意思是这个函数不在本文件
 #include "kernel.h"
 //保存heap_init()的执行结果
 
-  static void enter_s_mode(void (*entry)(void))
-{
-    unsigned long mstatus_value;
-
-
-    unsigned long pmpaddr =
-        0x3FFFFFFFFFFFFFUL;
-
-    unsigned long pmpcfg =
-        0xFUL;
-
-    
-    asm volatile(
-        "csrw pmpaddr0, %0"
-        :
-        : "r"(pmpaddr)
-        : "memory"
-    );
-
-    
-    asm volatile(
-        "csrw pmpcfg0, %0"
-        :
-        : "r"(pmpcfg)
-        : "memory"
-    );
-
-    asm volatile(
-        "csrr %0, mstatus"
-        : "=r"(mstatus_value)
-    );
-
-
-
-    mstatus_value &= ~(3UL << 11);
-
-    // 再设置成 01
-    mstatus_value |= (1UL << 11);
-
-    // 写回 mstatus
-    asm volatile(
-        "csrw mstatus, %0"
-        :
-        : "r"(mstatus_value)
-        : "memory"
-    );
-
-    asm volatile(
-        "csrw mepc, %0"
-        :
-        : "r"((unsigned long)entry)
-        : "memory"
-    );
-
-    asm volatile("mret");
-    while (1)
-    {
-    }
-  }
-
+  
 
 
 
@@ -104,8 +45,8 @@ int main()
 //初始化内核堆，heap_init内部会调用alloc_page()
 //从16个物理页中拿出一页4KB
     heap_init();
-   
-  enter_s_mode(kernel_main);
+   //早期内核初始化完成后
+    return 0;
 
     //我们现在是裸机程序,main后面没有操作系统帮我们接管程序,所以输出完成后让cpu一直停在这里
   while (1)
