@@ -1,7 +1,49 @@
 #include "task.h"//引入任务结构体定义
 #include "page.h"//引入页表接口
+#include "task.h"//任务控制块定义
+#include "page.h"//物理页分配接口
+#include "uart.h"//串口输出接口
 //定义任务A的控制块
 struct task task_a;
+
+//任务A的入口函数
+//staic表示这个函数只在本文件中可见，其他文件无法调用
+static void task_a_entry(void)
+{
+    //证明任务A已经开始执行
+    uart_puts("[TASK A] started!\n");
+    task_a.state = TASK_READY;
+    task_b.state = TASK_RUNNING;
+    context_switch(
+        &task_a.context,
+        &task_b.context
+    );
+    uart_puts("[TASK A] Returned from task B.\n");
+
+
+    //暂时不允许函数返回
+    while(1)
+    {
+
+    }
+}
+static void task_b_entry(void)
+{
+    uart_puts("[TASK B] started!\n");
+    task_b.state = TASK_READY;
+    task_a.state = TASK_RUNNING;
+    context_switch(
+        &task_b.context,
+        &task_a.context
+    );
+    uart_puts("[TASK B] Returned from task A.\n");
+    while(1)
+    {
+
+    }
+}
+
+
 //定义任务B的控制块
 struct task task_b;
 //初始化两个任务，当前值建立任务档案，不分配独立栈。不执行任务切换
@@ -30,4 +72,10 @@ task_a.context.sp =
     (unsigned long)task_a.stack_base + PAGE_SIZE;(unsigned long)task_a.stack_base + PAGE_SIZE;
 task_b.context.sp =
     (unsigned long)task_b.stack_base + PAGE_SIZE;
+//把任务A入口函数的地址保存到A的context.ra
+task_a.context.ra = (unsigned long)task_a_entry;
+task_b.context.ra = (unsigned long)task_b_entry;
+//任务A现在具备初始化运行条件
+task_a.state = TASK_READY;
+task_b.state = TASK_READY;
 }
