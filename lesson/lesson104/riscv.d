@@ -1,1 +1,0 @@
-riscv.o: riscv.S
