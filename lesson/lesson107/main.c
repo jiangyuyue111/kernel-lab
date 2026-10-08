@@ -15,6 +15,7 @@ extern void trap_entry(void);    //extern的意思是这个函数不在本文件
 #include "heap.h"
 #include "kernel.h"
 //保存heap_init()的执行结果
+#include "timer.h"
 
   
 
@@ -46,6 +47,7 @@ int main()
 //从16个物理页中拿出一页4KB
     heap_init();
    //早期内核初始化完成后
+   timer_init();
     return 0;
 
     //我们现在是裸机程序,main后面没有操作系统帮我们接管程序,所以输出完成后让cpu一直停在这里

@@ -2,7 +2,15 @@
 #include "plic.h"
 #include "uart.h"
 #include "console.h"
+#include "timer.h"
+// 【新增】Machine Timer Interrupt的mcause值
+#define MCAUSE_TIMER 0x8000000000000007UL
+
+// 【新增】Machine External Interrupt的mcause值
+#define MCAUSE_EXTERNAL 0x800000000000000BUL
+
 extern void trap_entry(void);
+
 
 
 void trap_init(void)
@@ -35,8 +43,24 @@ void enable_interrupt(void)
 }
 
 void trap_handler(void)
-{   //保存PLIC告诉我们的中断号
+{   //用来保存mcause寄存器的值，看看是哪个中断
+    unsigned long cause;
+     //保存PLIC告诉我们的中断号
      unsigned int irq;
+//读取mcause寄存器，看看是哪个中断
+    asm volatile(
+        "csrr %0, mcause"
+        : "=r"(cause)
+    );
+    if(cause == MCAUSE_TIMER)
+    {
+        //当前timer已经响了，预约下一次timer
+        timer_set_next();
+        //结束trap_handler,回到trap_entry
+        return;
+    }
+    if (cause == MCAUSE_EXTERNAL)
+    {
      //读取PLIC_CLAIM寄存器，得到中断号，看是哪个设备产生的
      irq = plic_claim();
      //判断是否是UART中断
@@ -67,5 +91,12 @@ void trap_handler(void)
     if (irq != 0)
     {
         plic_complete (irq);
+    }
+    return;
+
+}
+    while (1)
+    {
+
     }
 }
