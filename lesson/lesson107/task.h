@@ -34,6 +34,7 @@ struct task
     int state;//当前状态
     void *stack_base;//任务栈页的起始地址
     struct context context;//保存cpu上下文
+    unsigned long trap_sp;//中断现场的起始地址
 };
 //声明两个任务控制块
 extern struct task task_a;

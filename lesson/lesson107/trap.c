@@ -3,12 +3,16 @@
 #include "uart.h"
 #include "console.h"
 #include "timer.h"
+#include "scheduler.h"//为了访问current_task和schedule()
 // 【新增】Machine Timer Interrupt的mcause值
 #define MCAUSE_TIMER 0x8000000000000007UL
 
 // 【新增】Machine External Interrupt的mcause值
 #define MCAUSE_EXTERNAL 0x800000000000000BUL
-
+//临时保存调度器选中的任务
+struct task *timer_candidate = 0;
+//task.c中定义的调度启动标志
+extern volatile unsigned long scheduling_started;
 extern void trap_entry(void);
 
 
@@ -42,7 +46,7 @@ void enable_interrupt(void)
     );
 }
 
-void trap_handler(void)
+unsigned long trap_handler(unsigned long frame_sp)
 {   //用来保存mcause寄存器的值，看看是哪个中断
     unsigned long cause;
      //保存PLIC告诉我们的中断号
@@ -52,13 +56,35 @@ void trap_handler(void)
         "csrr %0, mcause"
         : "=r"(cause)
     );
+
+
     if(cause == MCAUSE_TIMER)
     {
-        //当前timer已经响了，预约下一次timer
         timer_set_next();
-        //结束trap_handler,回到trap_entry
-        return;
+
+        //只有当前任务存在，才进行任务调度
+       if (scheduling_started == 0 || current_task == 0)
+       {
+        return frame_sp;
+       
+       }
+       current_task->trap_sp = frame_sp;
+        timer_candidate = schedule();
+      
+        if (timer_candidate != 0 &&
+            timer_candidate != current_task &&
+            timer_candidate->trap_sp != 0)
+            {
+                struct task *old_task = current_task;
+                old_task->state = TASK_READY;
+                timer_candidate->state = TASK_RUNNING;
+                current_task = timer_candidate;
+                return current_task->trap_sp;
+            }
+            return frame_sp;
     }
+
+
     if (cause == MCAUSE_EXTERNAL)
     {
      //读取PLIC_CLAIM寄存器，得到中断号，看是哪个设备产生的
@@ -92,9 +118,10 @@ void trap_handler(void)
     {
         plic_complete (irq);
     }
-    return;
+    return frame_sp;
 
 }
+    uart_puts("[TRAP] unhandled trap!\n");
     while (1)
     {
 

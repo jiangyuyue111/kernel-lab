@@ -100,15 +100,36 @@ trap_entry:
     sd t4, 216(sp)
     sd t5, 224(sp)
     sd t6, 232(sp)
+# 【新增】把mepc读到t0
+    csrr t0,mepc
+ # 把mepc的值保存到Trap Frame偏移240字节处
+    sd t0,240(sp)
+ # 【新增】把mstatus读到t0
+    csrr t0,mstatus
+ # 把mstatus保存到偏移248字节处
+    sd t0,248(sp)
+    #把trap frame的地址传给C函数
+    mv a0,sp
 
     #调用c的trap handler
     call trap_handler
+    #把Sp改成C函数返回的现场地址
+    mv sp, a0
+    #恢复之前保存的mepc
+    ld t0,240(sp)
+    csrw mepc, t0
+    #恢复之前保存的mstatus
+    ld t0,248(sp)
+    csrw mstatus, t0
+
+
     #恢复现场
      ld ra,   0(sp)
     ld gp,   8(sp)
     ld tp,  16(sp)
 
     ld t0,  24(sp)
+
     ld t1,  32(sp)
     ld t2,  40(sp)
 
@@ -139,7 +160,7 @@ trap_entry:
     ld t4, 216(sp)
     ld t5, 224(sp)
     ld t6, 232(sp)
-
+   
     #删除trao frame，恢复到原来的sp
     addi sp, sp, 256
     #从machine trap 返回值寄存器

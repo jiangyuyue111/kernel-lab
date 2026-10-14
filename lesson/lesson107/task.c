@@ -1,10 +1,12 @@
 #include "task.h"//引入任务结构体定义
-#include "page.h"//引入页表接口
 #include "task.h"//任务控制块定义
 #include "page.h"//物理页分配接口
 #include "uart.h"//串口输出接口
+#include "trap_frame.h"
 //定义任务A的控制块
 struct task task_a;
+struct task task_b;
+volatile unsigned long scheduling_started = 0;
 
 //任务A的入口函数
 //staic表示这个函数只在本文件中可见，其他文件无法调用
@@ -12,16 +14,8 @@ static void task_a_entry(void)
 {
     //证明任务A已经开始执行
     uart_puts("[TASK A] started!\n");
-    task_a.state = TASK_READY;
-    task_b.state = TASK_RUNNING;
-    context_switch(
-        &task_a.context,
-        &task_b.context
-    );
-    uart_puts("[TASK A] Returned from task B.\n");
-
-
-    //暂时不允许函数返回
+    scheduling_started = 1;
+    //A不主动切换，等待Timer抢占
     while(1)
     {
 
@@ -30,13 +24,6 @@ static void task_a_entry(void)
 static void task_b_entry(void)
 {
     uart_puts("[TASK B] started!\n");
-    task_b.state = TASK_READY;
-    task_a.state = TASK_RUNNING;
-    context_switch(
-        &task_b.context,
-        &task_a.context
-    );
-    uart_puts("[TASK B] Returned from task A.\n");
     while(1)
     {
 
@@ -69,7 +56,7 @@ void task_init(void)
     }
 //设置任务A和任务B的栈指针，栈指针指向栈顶
 task_a.context.sp =
-    (unsigned long)task_a.stack_base + PAGE_SIZE;(unsigned long)task_a.stack_base + PAGE_SIZE;
+    (unsigned long)task_a.stack_base + PAGE_SIZE;
 task_b.context.sp =
     (unsigned long)task_b.stack_base + PAGE_SIZE;
 //把任务A入口函数的地址保存到A的context.ra
@@ -78,4 +65,71 @@ task_b.context.ra = (unsigned long)task_b_entry;
 //任务A现在具备初始化运行条件
 task_a.state = TASK_READY;
 task_b.state = TASK_READY;
+// A还没有保存过Timer中断现场
+task_a.trap_sp = 0;
+
+// B还没有保存过Timer中断现场
+task_b.trap_sp = 0;
+
+
+
+
+ // ---------- 构造B的初始Trap Frame ----------
+
+ // 计算任务B的栈顶地址
+    unsigned long b_top =
+        (unsigned long)task_b.stack_base + PAGE_SIZE;
+
+    // 从B栈顶往下预留256字节
+    // frame指向这块内存
+    struct trap_frame *frame =
+        (struct trap_frame *)(b_top - sizeof(struct trap_frame));
+      // 将frame转换成unsigned long指针
+    // 方便每次操作8字节
+    unsigned long *words = (unsigned long *)frame;
+
+    // 遍历整个Trap Frame
+    for (unsigned long i = 0;
+         i < sizeof(struct trap_frame) / sizeof(unsigned long);
+         i++)
+    {
+        // 把对应8字节清零
+        words[i] = 0;
+    }
+
+
+    // ---------- 7. 初始化gp、tp寄存器值 ----------
+
+    // 定义两个变量保存寄存器内容
+    unsigned long gp_value;
+    unsigned long tp_value;
+
+    // 读取当前CPU的gp
+    asm volatile("mv %0, gp" : "=r"(gp_value));
+
+    // 读取当前CPU的tp
+    asm volatile("mv %0, tp" : "=r"(tp_value));
+
+    // 将gp写入B的Trap Frame
+    frame->gp = gp_value;
+
+    // 将tp写入B的Trap Frame
+    frame->tp = tp_value;
+    // ---------- 8. 初始化B的执行地址 ----------
+
+    // B第一次运行，从task_b_entry的入口开始执行
+    frame->mepc = (unsigned long)task_b_entry;
+
+
+    // ---------- 9. 初始化B的Trap返回权限状态 ----------
+
+    // bit11设置MPP为S-mode
+    // bit7设置MPIE为1
+    frame->mstatus = (1UL << 11) | (1UL << 7);
+
+
+    // ---------- 10. 让B的PCB记录现场地址 ----------
+
+    // 将Trap Frame的起始地址保存到PCB
+    task_b.trap_sp = (unsigned long)frame;
 }
