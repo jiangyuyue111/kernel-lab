@@ -1,5 +1,7 @@
 #ifndef TRAP_FRAME_H
 #define TRAP_FRAME_H
+// 提供offsetof宏
+#include <stddef.h>
 
 // CPU中断现场的数据结构
 // 每个unsigned long在RV64中占8字节
@@ -50,5 +52,35 @@ _Static_assert(
     sizeof(struct trap_frame) == 256,
     "trap_frame size must be 256 bytes"
 );
+// 检查RV64下unsigned long的大小
+_Static_assert(
+    sizeof(unsigned long) == 8,
+    "unsigned long must be 8 bytes"
+);
 
+// 检查几个关键成员的内存偏移
+_Static_assert(
+    offsetof(struct trap_frame, ra) == 0,
+    "ra offset error"
+);
+
+_Static_assert(
+    offsetof(struct trap_frame, a0) == 64,
+    "a0 offset error"
+);
+
+_Static_assert(
+    offsetof(struct trap_frame, t6) == 232,
+    "t6 offset error"
+);
+
+_Static_assert(
+    offsetof(struct trap_frame, mepc) == 240,
+    "mepc offset error"
+);
+
+_Static_assert(
+    offsetof(struct trap_frame, mstatus) == 248,
+    "mstatus offset error"
+);
 #endif

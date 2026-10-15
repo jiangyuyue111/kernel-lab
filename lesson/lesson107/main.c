@@ -36,7 +36,7 @@ int main()
 
 
      //打开cpu中断，mie.MEIE=1,mstatus.MIE=1
-    enable_interrupt();
+    
     console_init();
 
     uart_puts("minios" );
@@ -47,17 +47,21 @@ int main()
 //从16个物理页中拿出一页4KB
     heap_init();
    //早期内核初始化完成后
-   timer_init();
+   // 内存相关初始化函数已返回
+    uart_puts("[BOOT] Memory initialization completed.\n");
+   
+    timer_init();
+     //Timer初始化函数已返回
+    uart_puts("[BOOT] Timer initialized.\n");
+    enable_interrupt();
+     // 即将从main返回
+    uart_puts("[BOOT] Entering S-mode...\n");
+    // 返回到riscv.S中的call main下一条指令
+    // 即boot_enter_s，随后由mret进入kernel_main
     return 0;
 
-    //我们现在是裸机程序,main后面没有操作系统帮我们接管程序,所以输出完成后让cpu一直停在这里
-  while (1)
-    {
-
-
-
-
-    }
+   
+  
 }
 
 //寄存器的地址=设备基地址+寄存器偏移

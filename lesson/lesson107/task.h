@@ -41,9 +41,10 @@ extern struct task task_a;
 extern struct task task_b;
 //声明任务初始化函数
 void task_init(void);
-#endif
+
 //cpu上下文切换函数声明
 void context_switch(
     struct context *old_ctx,//当前任务上下文保存位置，旧任务的地址
     struct context *new_ctx//即将恢复的任务上下文位置
 );
+#endif

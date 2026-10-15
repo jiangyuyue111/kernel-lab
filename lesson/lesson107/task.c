@@ -1,5 +1,4 @@
 #include "task.h"//引入任务结构体定义
-#include "task.h"//任务控制块定义
 #include "page.h"//物理页分配接口
 #include "uart.h"//串口输出接口
 #include "trap_frame.h"
@@ -44,6 +43,7 @@ void task_init(void)
     task_a.stack_base = alloc_page();//返回栈页的起始地址
     if(task_a.stack_base == 0)
     {
+        uart_puts("[TASK ERROR] A stack allocation failed!\n");
         return;//如果没有空闲页则停止初始化，提前返回
     }
     task_b.stack_base = alloc_page();
@@ -62,9 +62,7 @@ task_b.context.sp =
 //把任务A入口函数的地址保存到A的context.ra
 task_a.context.ra = (unsigned long)task_a_entry;
 task_b.context.ra = (unsigned long)task_b_entry;
-//任务A现在具备初始化运行条件
-task_a.state = TASK_READY;
-task_b.state = TASK_READY;
+
 // A还没有保存过Timer中断现场
 task_a.trap_sp = 0;
 
@@ -132,4 +130,7 @@ task_b.trap_sp = 0;
 
     // 将Trap Frame的起始地址保存到PCB
     task_b.trap_sp = (unsigned long)frame;
+    //任务A现在具备初始化运行条件
+    task_a.state = TASK_READY;
+    task_b.state = TASK_READY;
 }

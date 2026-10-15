@@ -9,8 +9,10 @@
 
 // 【新增】Machine External Interrupt的mcause值
 #define MCAUSE_EXTERNAL 0x800000000000000BUL
-//临时保存调度器选中的任务
-struct task *timer_candidate = 0;
+//控制是否输出任务切换日志
+#ifndef SCHED_DEBUG
+#define SCHED_DEBUG 1
+#endif
 //task.c中定义的调度启动标志
 extern volatile unsigned long scheduling_started;
 extern void trap_entry(void);
@@ -69,16 +71,18 @@ unsigned long trap_handler(unsigned long frame_sp)
        
        }
        current_task->trap_sp = frame_sp;
-        timer_candidate = schedule();
+        struct task *next_task = schedule();
       
-        if (timer_candidate != 0 &&
-            timer_candidate != current_task &&
-            timer_candidate->trap_sp != 0)
+        if (next_task != 0 &&
+            next_task != current_task &&
+            next_task->trap_sp != 0)
             {
                 struct task *old_task = current_task;
                 old_task->state = TASK_READY;
-                timer_candidate->state = TASK_RUNNING;
-                current_task = timer_candidate;
+               next_task->state = TASK_RUNNING;
+                current_task = next_task;
+
+                #if SCHED_DEBUG
                 if(current_task == &task_a)
                 {
                      uart_puts("[PREEMPT] Switch to Task A\n");
@@ -87,6 +91,7 @@ unsigned long trap_handler(unsigned long frame_sp)
                 {
                     uart_puts("[PREEMPT] Switch to Task B\n");
                 }
+                #endif
                 return current_task->trap_sp;
             }
             return frame_sp;
