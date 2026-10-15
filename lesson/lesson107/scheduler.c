@@ -17,7 +17,7 @@ struct task *schedule(void)//调用schedule，返回一个地址，赋值给task
     }
     if (current_task == &task_b)
     {
-        if (task_b.state == TASK_READY)
+        if (task_a.state == TASK_READY)
         {
             return &task_a;
         }

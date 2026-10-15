@@ -14,7 +14,6 @@ void kernel_main(void)
         uart_puts("[TASK] PCB state error!\n");
         while (1)
         {
-  
         };
     }
     //接下来运行A
@@ -37,8 +36,8 @@ void kernel_main(void)
     //只有将来切换回kenel_context时，才会执行到这里
      uart_puts("[Kernel] Returned from task A.\n");
 
-while(1)
-{
+    while(1)
+    {
     
-}    
+    }    
 }

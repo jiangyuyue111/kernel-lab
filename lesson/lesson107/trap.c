@@ -79,6 +79,14 @@ unsigned long trap_handler(unsigned long frame_sp)
                 old_task->state = TASK_READY;
                 timer_candidate->state = TASK_RUNNING;
                 current_task = timer_candidate;
+                if(current_task == &task_a)
+                {
+                     uart_puts("[PREEMPT] Switch to Task A\n");
+                }
+                else
+                {
+                    uart_puts("[PREEMPT] Switch to Task B\n");
+                }
                 return current_task->trap_sp;
             }
             return frame_sp;
